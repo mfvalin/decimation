@@ -633,6 +633,23 @@ int UnDecimate_by5_2d(float *src, float *dst, int ni, int li, int nj){
   return 0 ;
 }
 
+// 1D general decimation function
+int Decimate_1d(float *src, int factor, float *dst, int ni, int li){
+  switch(factor)
+  {
+    case 2:
+      return Decimate_by2_1d(src, dst, ni, li) ;
+    case 3:
+      return Decimate_by3_1d(src, dst, ni, li) ;
+    case 4:
+      return Decimate_by4_1d(src, dst, ni, li) ;
+    case 5:
+      return Decimate_by5_1d(src, dst, ni, li) ;
+    default:
+      return -1 ;
+  }
+}
+
 // 2D general decimation function
 int Decimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
   switch(factor)
@@ -650,8 +667,29 @@ int Decimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
   }
 }
 
-// 2D general inverses decimation (restore) function
-int Undecimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
+// 1D general inverse decimation (restore) function
+int UnDecimate_1d(float *src, int factor, float *dst, int ni){
+  switch(factor)
+  {
+    case 2:
+      UnDecimate_by2_1d(src, dst, ni) ;
+      return 0 ;
+    case 3:
+      UnDecimate_by3_1d(src, dst, ni) ;
+      return 0 ;
+    case 4:
+      UnDecimate_by4_1d(src, dst, ni) ;
+      return 0 ;
+    case 5:
+      UnDecimate_by5_1d(src, dst, ni) ;
+      return 0 ;
+    default:
+      return -1 ;
+  }
+}
+
+// 2D general inverse decimation (restore) function
+int UnDecimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
   switch(factor)
   {
     case 2:
@@ -683,7 +721,7 @@ int main(int argc, char **argv){
   float srca[NJ * NI] ;
   float srcb[NJ * NI] ;
   int np, nd ;
-  int i, j ;
+  int i, j, by ;
 
   for(nd = 2 ; nd < 6 ; nd++){
     np = N_decimated(NI, nd) ;
@@ -694,7 +732,7 @@ int main(int argc, char **argv){
 
   for(i=0 ; i < NI ; i++) src1[i] = i + 1.0f ;
   for(i=0 ; i < NI ; i++) src2[i] = 0.0f ;
-  printf("========= original array =========\n") ;
+  printf("========= original C data (%d,%d)=========\n",NJ,NI) ;
   for(j=0 ; j<NJ ; j++){
     for(i=0 ; i<NI ; i++){
       srca[j*NI +i] = i + j + 1.0f ;
@@ -703,143 +741,40 @@ int main(int argc, char **argv){
     printf("\n");
   }
 //
-// test decimation by 2
+// test decimation by 2,3,4,5
 //
-  printf("\n");
-//   for(i=0 ; i < NI ; i++) printf("%4.1f ",src1[i]) ;
-//   printf("\n");
-  printf(" 1 D decimation by 2 (first row)\n");
-  np = Decimate_by2_1d(srca, dst1, NI, 0) ;
-  for(i=0 ; i < np ; i++) printf("%4.1f ",dst1[i]) ;
-  printf("\n");
-  UnDecimate_by2_1d(dst1, src2, NI) ;
-  for(i=0 ; i < NI ; i++) printf("%4.1f ",src2[i]) ;
-  printf("\n\n");
+  for(by = 2 ; by < 6 ; by++){
+    printf("\n");
+    printf(" 1 D decimation/restore by %d (top row)\n", by);
+    np = Decimate_1d(srca, by, dst1, NI, 0) ;
+    for(i=0 ; i < np ; i++) printf("%4.1f ",dst1[i]) ;
+    printf("\n");
+    UnDecimate_1d(dst1, by, src2, NI) ;
+    for(i=0 ; i < NI ; i++) printf("%4.1f ",src2[i]) ;
+    printf("\n\n");
 
-  printf(" 2 D decimation by 2\n");
-  for(i=0 ; i<NI*NJ ; i++) dst1[i] = 0.0 ;
-//   Decimate_by2_2d(srca, dst1, NI, NI, NJ) ;
-  Decimate_2d(srca, 2, dst1, NI, NI, NJ) ;
-  for(j=0 ; j<N_decimated(NJ,2) ; j++){
-    for(i=0 ; i<N_decimated(NI,2) ; i++){
-      printf("%4.1f ",dst1[j*N_decimated(NI,2) +i]) ;
+    printf(" 2 D decimation by %d\n", by);
+    for(i=0 ; i<NI*NJ ; i++) dst1[i] = 0.0 ;
+    Decimate_2d(srca, by, dst1, NI, NI, NJ) ;
+    for(j=0 ; j<N_decimated(NJ,by) ; j++){
+      for(i=0 ; i<N_decimated(NI,by) ; i++){
+        printf("%4.1f ",dst1[j*N_decimated(NI,by) +i]) ;
+      }
+      printf("\n");
+    }
+    printf("\n");
+
+    printf(" 2 D restore by %d\n", by);
+    for(i=0 ; i<NI*NJ ; i++) srcb[i] = 0.0 ;
+    UnDecimate_2d(dst1, by, srcb, NI, NI, NJ) ;
+    for(j=0 ; j<NJ ; j++){
+      for(i=0 ; i<NI ; i++){
+        printf("%4.1f ",srcb[j*NI +i]) ;
+      }
+      printf("\n");
     }
     printf("\n");
   }
-  printf("\n");
-  for(i=0 ; i<NI*NJ ; i++) srcb[i] = 0.0 ;
-  UnDecimate_by2_2d(dst1, srcb, NI, NI, NJ) ;
-  for(j=0 ; j<NJ ; j++){
-    for(i=0 ; i<NI ; i++){
-      printf("%4.1f ",srcb[j*NI +i]) ;
-    }
-    printf("\n");
-  }
-  printf("\n");
-//
-// test decimation by 3
-//
-  printf(" 1 D decimation by 3 (first row)\n");
-  for(i=0 ; i < NI ; i++) dst1[i] = 0.0f ;
-  np = Decimate_by3_1d(src1, dst1, NI, 0) ;
-  for(i=0 ; i < np ; i++) printf("%4.1f ",dst1[i]) ;
-  printf("\n");
-
-  for(i=0 ; i < NI ; i++) src2[i] = 0.0f ;
-  UnDecimate_by3_1d(dst1, src2, NI) ;
-  for(i=0 ; i < NI ; i++) printf("%4.1f ",src2[i]) ;
-  printf("\n\n");
-
-  printf(" 2 D decimation by 3\n");
-  for(i=0 ; i<NI*NJ ; i++) dst1[i] = 0.0 ;
-//   Decimate_by3_2d(srca, dst1, NI, NI, NJ) ;
-  Decimate_2d(srca, 3, dst1, NI, NI, NJ) ;
-  for(j=0 ; j<N_decimated(NJ,3) ; j++){
-    for(i=0 ; i<N_decimated(NI,3) ; i++){
-      printf("%4.1f ",dst1[j*N_decimated(NI,3) +i]) ;
-    }
-    printf("\n");
-  }
-  printf("\n");
-
-  for(i=0 ; i<NI*NJ ; i++) srcb[i] = 0.0 ;
-  UnDecimate_by3_2d(dst1, srcb, NI, NI, NJ) ;
-  for(j=0 ; j<NJ ; j++){
-    for(i=0 ; i<NI ; i++){
-      printf("%4.1f ",srcb[j*NI +i]) ;
-    }
-    printf("\n");
-  }
-  printf("\n");
-//
-// test decimation by 4
-//
-  printf(" 1 D decimation by 4 (first row)\n");
-  for(i=0 ; i < NI ; i++) dst1[i] = 0.0f ;
-  np = Decimate_by4_1d(src1, dst1, NI, 0) ;
-  for(i=0 ; i < np ; i++) printf("%4.1f ",dst1[i]) ;
-  printf("\n");
-
-  for(i=0 ; i < NI ; i++) src2[i] = 0.0f ;
-  UnDecimate_by4_1d(dst1, src2, NI) ;
-  for(i=0 ; i < NI ; i++) printf("%4.1f ",src2[i]) ;
-  printf("\n\n");
-
-  printf(" 2 D decimation by 4\n");
-  for(i=0 ; i<NI*NJ ; i++) dst1[i] = 0.0 ;
-//   Decimate_by4_2d(srca, dst1, NI, NI, NJ) ;
-  Decimate_2d(srca, 4, dst1, NI, NI, NJ) ;
-  for(j=0 ; j<N_decimated(NJ,4) ; j++){
-    for(i=0 ; i<N_decimated(NI,4) ; i++){
-      printf("%4.1f ",dst1[j*N_decimated(NI,4) +i]) ;
-    }
-    printf("\n");
-  }
-  printf("\n");
-
-  for(i=0 ; i<NI*NJ ; i++) srcb[i] = 0.0 ;
-  UnDecimate_by4_2d(dst1, srcb, NI, NI, NJ) ;
-  for(j=0 ; j<NJ ; j++){
-    for(i=0 ; i<NI ; i++){
-      printf("%4.1f ",srcb[j*NI +i]) ;
-    }
-    printf("\n");
-  }
-  printf("\n");
-//
-// test decimation by 5
-//
-  printf(" 1 D decimation by 5 (first row)\n");
-  for(i=0 ; i < NI ; i++) dst1[i] = 0.0f ;
-  np = Decimate_by5_1d(src1, dst1, NI, 0) ;
-  for(i=0 ; i < np ; i++) printf("%4.1f ",dst1[i]) ;
-  printf("\n");
-
-  for(i=0 ; i < NI ; i++) src2[i] = 0.0f ;
-  UnDecimate_by5_1d(dst1, src2, NI) ;
-  for(i=0 ; i < NI ; i++) printf("%4.1f ",src2[i]) ;
-  printf("\n\n");
-
-  printf(" 2 D decimation by 5\n");
-  for(i=0 ; i<NI*NJ ; i++) dst1[i] = 0.0 ;
-//   Decimate_by5_2d(srca, dst1, NI, NI, NJ) ;
-  Decimate_2d(srca, 5, dst1, NI, NI, NJ) ;
-  for(j=0 ; j<N_decimated(NJ,5) ; j++){
-    for(i=0 ; i<N_decimated(NI,5) ; i++){
-      printf("%4.1f ",dst1[j*N_decimated(NI,5) +i]) ;
-    }
-    printf("\n");
-  }
-  printf("\n");
-  for(i=0 ; i<NI*NJ ; i++) srcb[i] = 0.0 ;
-  UnDecimate_by5_2d(dst1, srcb, NI, NI, NJ) ;
-  for(j=0 ; j<NJ ; j++){
-    for(i=0 ; i<NI ; i++){
-      printf("%4.1f ",srcb[j*NI +i]) ;
-    }
-    printf("\n");
-  }
-  printf("\n");
 
   return 0 ;
 }
