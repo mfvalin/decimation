@@ -113,7 +113,7 @@ static inline void UnDecimate_by2_1d(float *src, float *dst, int ni){
 }
 
 // inverse decimation by 2 of a 2D array (restore to original dimensions)
-void UnDecimate_by2_2d(float *src, float *dst, int ni, int li, int nj){
+int UnDecimate_by2_2d(float *src, float *dst, int ni, int li, int nj){
   int itup = (ni-2)/2 ;                  // number of averaged pairs along i
   int jtup = (nj-2)/2 ;                  // number of averaged pairs along j
   int ipre = ni - (2 * itup) - 1 ;
@@ -154,6 +154,7 @@ void UnDecimate_by2_2d(float *src, float *dst, int ni, int li, int nj){
   src += nid ;
   // undecimate last row (no processing along j)
   UnDecimate_by2_1d(src, dst, ni) ;
+  return 0 ;
 }
 //
 // ============================= decimation by 3 =============================
@@ -243,7 +244,7 @@ static inline void UnDecimate_by3_1d(float *src, float *dst, int ni){
 }
 
 // inverse decimation by 3 of a 2D array (restore to original dimensions)
-void UnDecimate_by3_2d(float *src, float *dst, int ni, int li, int nj){
+int UnDecimate_by3_2d(float *src, float *dst, int ni, int li, int nj){
   int itup = (ni-2)/3 ;                  // number of averaged trios along i
   int jtup = (nj-2)/3 ;                  // number of averaged trios along j
   int ipre = ni - (3 * itup) - 1 ;
@@ -288,6 +289,7 @@ void UnDecimate_by3_2d(float *src, float *dst, int ni, int li, int nj){
   src += nid ;
   // undecimate last row (no processing along j)
   UnDecimate_by3_1d(src, dst, ni) ;
+  return 0 ;
 }
 //
 // ============================= decimation by 4 =============================
@@ -389,7 +391,7 @@ static inline void UnDecimate_by4_1d(float *src, float *dst, int ni){
 }
 
 // inverse decimation by 4 of a 2D array (restore to original dimensions)
-void UnDecimate_by4_2d(float *src, float *dst, int ni, int li, int nj){
+int UnDecimate_by4_2d(float *src, float *dst, int ni, int li, int nj){
   int itup = (ni-2)/4 ;                  // number of averaged pairs along i
   int jtup = (nj-2)/4 ;                  // number of averaged pairs along j
   int ipre = ni - (4 * itup) - 1 ;
@@ -455,6 +457,7 @@ void UnDecimate_by4_2d(float *src, float *dst, int ni, int li, int nj){
 
   // undecimate last row (no processing along j)
   UnDecimate_by4_1d(src, dst, ni) ;
+  return 0 ;
 }
 //
 // ============================= decimation by 4 =============================
@@ -560,9 +563,9 @@ static inline void UnDecimate_by5_1d(float *src, float *dst, int ni){
 }
 
 // inverse decimation by 5 of a 2D array (restore to original dimensions)
-void UnDecimate_by5_2d(float *src, float *dst, int ni, int li, int nj){
+int UnDecimate_by5_2d(float *src, float *dst, int ni, int li, int nj){
   int itup = (ni-2)/5 ;                  // number of averaged pairs along i
-  int jtup = (nj-2)/4 ;                  // number of averaged pairs along j
+  int jtup = (nj-2)/5 ;                  // number of averaged pairs along j
   int ipre = ni - (5 * itup) - 1 ;
   int jpre = nj - (5 * jtup) - 1 ;
   int nid = ipre + 1 + itup ;            // total number of decimated points along i
@@ -627,12 +630,50 @@ void UnDecimate_by5_2d(float *src, float *dst, int ni, int li, int nj){
 
   // undecimate last row (no processing along j)
   UnDecimate_by5_1d(src, dst, ni) ;
+  return 0 ;
+}
+
+// 2D general decimation function
+int Decimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
+  switch(factor)
+  {
+    case 2:
+      return Decimate_by2_2d(src, dst, ni, li, nj) ;
+    case 3:
+      return Decimate_by3_2d(src, dst, ni, li, nj) ;
+    case 4:
+      return Decimate_by4_2d(src, dst, ni, li, nj) ;
+    case 5:
+      return Decimate_by5_2d(src, dst, ni, li, nj) ;
+    default:
+      return -1 ;
+  }
+}
+
+// 2D general inverses decimation (restore) function
+int Undecimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
+  switch(factor)
+  {
+    case 2:
+      return UnDecimate_by2_2d(src, dst, ni, li, nj) ;
+    case 3:
+      return UnDecimate_by3_2d(src, dst, ni, li, nj) ;
+    case 4:
+      return UnDecimate_by4_2d(src, dst, ni, li, nj) ;
+    case 5:
+      return UnDecimate_by5_2d(src, dst, ni, li, nj) ;
+    default:
+      return -1 ;
+  }
 }
 
 #if defined(SELF_TEST)
-
+#if ! defined(NI)
 #define NI 12
+#endif
+#if ! defined(NJ)
 #define NJ 12
+#endif
 
 #include <stdio.h>
 int main(int argc, char **argv){
@@ -677,7 +718,8 @@ int main(int argc, char **argv){
 
   printf(" 2 D decimation by 2\n");
   for(i=0 ; i<NI*NJ ; i++) dst1[i] = 0.0 ;
-  Decimate_by2_2d(srca, dst1, NI, NI, NJ) ;
+//   Decimate_by2_2d(srca, dst1, NI, NI, NJ) ;
+  Decimate_2d(srca, 2, dst1, NI, NI, NJ) ;
   for(j=0 ; j<N_decimated(NJ,2) ; j++){
     for(i=0 ; i<N_decimated(NI,2) ; i++){
       printf("%4.1f ",dst1[j*N_decimated(NI,2) +i]) ;
@@ -710,7 +752,8 @@ int main(int argc, char **argv){
 
   printf(" 2 D decimation by 3\n");
   for(i=0 ; i<NI*NJ ; i++) dst1[i] = 0.0 ;
-  Decimate_by3_2d(srca, dst1, NI, NI, NJ) ;
+//   Decimate_by3_2d(srca, dst1, NI, NI, NJ) ;
+  Decimate_2d(srca, 3, dst1, NI, NI, NJ) ;
   for(j=0 ; j<N_decimated(NJ,3) ; j++){
     for(i=0 ; i<N_decimated(NI,3) ; i++){
       printf("%4.1f ",dst1[j*N_decimated(NI,3) +i]) ;
@@ -744,7 +787,8 @@ int main(int argc, char **argv){
 
   printf(" 2 D decimation by 4\n");
   for(i=0 ; i<NI*NJ ; i++) dst1[i] = 0.0 ;
-  Decimate_by4_2d(srca, dst1, NI, NI, NJ) ;
+//   Decimate_by4_2d(srca, dst1, NI, NI, NJ) ;
+  Decimate_2d(srca, 4, dst1, NI, NI, NJ) ;
   for(j=0 ; j<N_decimated(NJ,4) ; j++){
     for(i=0 ; i<N_decimated(NI,4) ; i++){
       printf("%4.1f ",dst1[j*N_decimated(NI,4) +i]) ;
@@ -778,7 +822,8 @@ int main(int argc, char **argv){
 
   printf(" 2 D decimation by 5\n");
   for(i=0 ; i<NI*NJ ; i++) dst1[i] = 0.0 ;
-  Decimate_by5_2d(srca, dst1, NI, NI, NJ) ;
+//   Decimate_by5_2d(srca, dst1, NI, NI, NJ) ;
+  Decimate_2d(srca, 5, dst1, NI, NI, NJ) ;
   for(j=0 ; j<N_decimated(NJ,5) ; j++){
     for(i=0 ; i<N_decimated(NI,5) ; i++){
       printf("%4.1f ",dst1[j*N_decimated(NI,5) +i]) ;
