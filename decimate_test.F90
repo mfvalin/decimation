@@ -13,7 +13,7 @@ program decimate_test
   real, dimension(:,:), allocatable :: dst1
   integer :: i, j, status, by
 
-  write(6,'(A,I3,A,I3,A)')" ==== original data (",NI,",",NJ,')'
+  write(6,'(A,I3,A,I3,A)')" ==== original Fortran data (",NI,",",NJ,')'
   do j = 1, NJ
     do i = 1, NI
       src1(i,j) = i + j - 1.0
@@ -23,7 +23,7 @@ program decimate_test
   write(6,*)
 
   do by = 2, 5
-    write(6,*)" ==== decimation by",by
+    write(6,'(A,I3,A)')" ==== decimation by",by,' ===='
     ALLOC_DECIMATED(dst1, NI, NJ, by)
     dst1 = 0.0
     status = Decimate_2d(src1, by, dst1, NI, NI, NJ)

@@ -49,16 +49,27 @@ int N_decimated(int npts, int nd){
 static inline int Decimate_by2_1d(float *src1, float *dst, int ni, int li){
   int i, j, pre ;
   int ntup = (ni-2) / 2 ;    // number of averaged groups of rows
-  float *src2 = src1 + li ;  // second row to be averaged (same as src1 if li is 0)
+  float *src2 ;              // second row to be averaged (same as src1 if li is 0)
 
   pre = ni - (2 * ntup) - 1 ;
-  for(i = 0 ; i < pre ; i++) dst[i] = (src1[i] + src2[i]) * .5f;     // first pre point(s) verbatim
+  if(li == 0){
+    for(i = 0 ; i < pre ; i++) dst[i] = src1[i];                       // first pre point(s) verbatim
 
-  for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=2) {              // averaged tuples (pairs)
-    dst[i] = ( src1[j] + src1[j+1] + src2[j] + src2[j+1] ) * .25f ;
+    for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=2) {              // averaged tuples (pairs)
+      dst[i] = ( src1[j] + src1[j+1] ) * .2f ;
+    }
+
+    dst[i] = src1[j] ;                                                 // last point verbatim
+  }else{
+    src2 = src1 + li ;
+    for(i = 0 ; i < pre ; i++) dst[i] = (src1[i] + src2[i]) * .5f;     // first pre point(s) verbatim
+
+    for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=2) {              // averaged tuples (pairs)
+      dst[i] = ( src1[j] + src1[j+1] + src2[j] + src2[j+1] ) * .25f ;
+    }
+
+    dst[i] = ( src1[j] + src2[j] ) * .5f ;                             // last point verbatim
   }
-
-  dst[i] = ( src1[j] + src2[j] ) * .5f ;                             // last point verbatim
 
   return i + 1 ;
 }
@@ -174,21 +185,34 @@ int UnDecimate_by2_2d(float *src, float *dst, int ni, int li, int nj){
 static inline int Decimate_by3_1d(float *src1, float *dst, int ni, int li){
   int i, j, pre ;
   int ntup = (ni-2) / 3 ;             // number of averaged groups of rows
-  float *src2 = src1 + li ;
-  float *src3 = src2 + li ;
+  float *src2 ;
+  float *src3 ;
   float third = 1.0f / 3.0f ;
   float ninth = 1.0f / 9.0f ;
 
   pre = ni - (3 * ntup) - 1 ;
-  for(i = 0 ; i < pre ; i++) dst[i] = (src1[i] + src2[i] + src3[i]) * third;     // first pre point(s) verbatim
+  if(li == 0) {
 
-  for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=3) {                          // averaged tuples (trios)
-    dst[i] = ( src1[j] + src1[j+1] + src1[j+2] + 
-               src2[j] + src2[j+1] + src2[j+2] + 
-               src3[j] + src3[j+1] + src3[j+2]    ) * ninth ;
+    for(i = 0 ; i < pre ; i++) dst[i] = src1[i] ;                                  // first pre point(s) verbatim
+    for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=3) {                          // averaged tuples (trios)
+      dst[i] = ( src1[j] + src1[j+1] + src1[j+2] ) * third ;
+     }
+    dst[i] = src1[j] ;                                                             // last point verbatim
+
+  }else{
+
+    src2 = src1 + li ;
+    src3 = src2 + li ;
+    for(i = 0 ; i < pre ; i++) dst[i] = (src1[i] + src2[i] + src3[i]) * third;     // first pre point(s) verbatim
+
+    for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=3) {                          // averaged tuples (trios)
+      dst[i] = ( src1[j] + src1[j+1] + src1[j+2] + 
+                src2[j] + src2[j+1] + src2[j+2] + 
+                src3[j] + src3[j+1] + src3[j+2]    ) * ninth ;
+    }
+
+    dst[i] = ( src1[j] + src2[j] + src3[j] ) * third ;                             // last point verbatim
   }
-
-  dst[i] = ( src1[j] + src2[j] + src3[j] ) * third ;                             // last point verbatim
 
   return i + 1 ;
 }
@@ -309,22 +333,36 @@ int UnDecimate_by3_2d(float *src, float *dst, int ni, int li, int nj){
 static inline int Decimate_by4_1d(float *src1, float *dst, int ni, int li){
   int i, j, pre ;
   int ntup = (ni-2) / 4 ;    // number of averaged groups of rows (quads)
-  float *src2 = src1 + li ;  // second row to be averaged (same as src1 if li is 0)
-  float *src3 = src2 + li ;  // third row to be averaged (same as src1 if li is 0)
-  float *src4 = src3 + li ;  // fourth row to be averaged (same as src1 if li is 0)
+  float *src2 ;              // second row to be averaged (same as src1 if li is 0)
+  float *src3 ;              // third row to be averaged (same as src1 if li is 0)
+  float *src4 ;              // fourth row to be averaged (same as src1 if li is 0)
   float sixteenth = 1.0f/16.0f ;
 
   pre = ni - (4 * ntup) - 1 ;
-  for(i = 0 ; i < pre ; i++) dst[i] = (src1[i] + src2[i] + src3[i] + src4[i]) * .25f;     // first pre point(s) verbatim
+  if(li == 0) {
 
-  for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=4) {                                   // averaged tuples (quads)
-    dst[i] = ( src1[j] + src1[j+1] + src1[j+2] + src1[j+3] + 
-               src2[j] + src2[j+1] + src2[j+2] + src2[j+3] +
-               src3[j] + src3[j+1] + src3[j+2] + src3[j+3] +
-               src4[j] + src4[j+1] + src4[j+2] + src4[j+3]   ) * sixteenth ;
+    for(i = 0 ; i < pre ; i++) dst[i] = src1[i] ;                                           // first pre point(s) verbatim
+    for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=4) {                                   // averaged tuples (quads)
+      dst[i] = ( src1[j] + src1[j+1] + src1[j+2] + src1[j+3] ) * .25f ;
+    }
+    dst[i] = src1[j] ;                                                                      // last point verbatim
+
+  }else{
+
+    src2 = src1 + li ;
+    src3 = src2 + li ;
+    src4 = src3 + li ;
+    for(i = 0 ; i < pre ; i++) dst[i] = (src1[i] + src2[i] + src3[i] + src4[i]) * .25f;     // first pre point(s) verbatim
+
+    for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=4) {                                   // averaged tuples (quads)
+      dst[i] = ( src1[j] + src1[j+1] + src1[j+2] + src1[j+3] + 
+                src2[j] + src2[j+1] + src2[j+2] + src2[j+3] +
+                src3[j] + src3[j+1] + src3[j+2] + src3[j+3] +
+                src4[j] + src4[j+1] + src4[j+2] + src4[j+3]   ) * sixteenth ;
+    }
+
+    dst[i] = ( src1[j] + src2[j] + src3[j] + src4[j] ) * .25f ;                             // last point verbatim
   }
-
-  dst[i] = ( src1[j] + src2[j] + src3[j] + src4[j] ) * .25f ;                             // last point verbatim
 
   return i + 1 ;
 }
@@ -477,25 +515,40 @@ int UnDecimate_by4_2d(float *src, float *dst, int ni, int li, int nj){
 static inline int Decimate_by5_1d(float *src1, float *dst, int ni, int li){
   int i, j, pre ;
   int ntup = (ni-2) / 5 ;    // number of averaged groups of rows (quads)
-  float *src2 = src1 + li ;  // second row to be averaged (same as src1 if li is 0)
-  float *src3 = src2 + li ;  // third row to be averaged (same as src1 if li is 0)
-  float *src4 = src3 + li ;  // fourth row to be averaged (same as src1 if li is 0)
-  float *src5 = src4 + li ;  // fifth row to be averaged (same as src1 if li is 0)
+  float *src2 ;              // second row to be averaged (same as src1 if li is 0)
+  float *src3 ;              // third row to be averaged (same as src1 if li is 0)
+  float *src4 ;              // fourth row to be averaged (same as src1 if li is 0)
+  float *src5 ;              // fifth row to be averaged (same as src1 if li is 0)
   float scale = 1.0f / 25.0f ;
   float fifth = 1.0f / 5.0f ;
 
   pre = ni - (5 * ntup) - 1 ;
-  for(i = 0 ; i < pre ; i++) dst[i] = (src1[i] + src2[i] + src3[i] + src4[i] + src5[i]) * fifth;     // first pre point(s) verbatim
+  if(li == 0) {
 
-  for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=5) {                                   // averaged tuples (quads)
-    dst[i] = ( src1[j] + src1[j+1] + src1[j+2] + src1[j+3] + src1[j+4] + 
-               src2[j] + src2[j+1] + src2[j+2] + src2[j+3] + src2[j+4] +
-               src3[j] + src3[j+1] + src3[j+2] + src3[j+3] + src3[j+4] +
-               src4[j] + src4[j+1] + src4[j+2] + src4[j+3] + src4[j+4] +
-               src5[j] + src5[j+1] + src5[j+2] + src5[j+3] + src5[j+4]   ) * scale ;
+    for(i = 0 ; i < pre ; i++) dst[i] = src1[i] ;                                           // first pre point(s) verbatim
+    for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=5) {                                   // averaged tuples (quads)
+      dst[i] = ( src1[j] + src1[j+1] + src1[j+2] + src1[j+3] + src1[j+4] ) * fifth ;
+    }
+    dst[i] = src1[j] ;                                                                      // last point verbatim
+
+  }else{
+
+    src2 = src1 + li ;
+    src3 = src2 + li ;
+    src4 = src3 + li ;
+    src5 = src4 + li ;
+    for(i = 0 ; i < pre ; i++) dst[i] = (src1[i] + src2[i] + src3[i] + src4[i] + src5[i]) * fifth;     // first pre point(s) verbatim
+
+    for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=5) {                                   // averaged tuples (quads)
+      dst[i] = ( src1[j] + src1[j+1] + src1[j+2] + src1[j+3] + src1[j+4] + 
+                src2[j] + src2[j+1] + src2[j+2] + src2[j+3] + src2[j+4] +
+                src3[j] + src3[j+1] + src3[j+2] + src3[j+3] + src3[j+4] +
+                src4[j] + src4[j+1] + src4[j+2] + src4[j+3] + src4[j+4] +
+                src5[j] + src5[j+1] + src5[j+2] + src5[j+3] + src5[j+4]   ) * scale ;
+    }
+
+    dst[i] = ( src1[j] + src2[j] + src3[j] + src4[j] + src5[j] ) * fifth ;                   // last point verbatim
   }
-
-  dst[i] = ( src1[j] + src2[j] + src3[j] + src4[j] + src5[j] ) * fifth ;                   // last point verbatim
 
   return i + 1 ;
 }
@@ -715,7 +768,6 @@ int UnDecimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
 
 #include <stdio.h>
 int main(int argc, char **argv){
-  float src1[NI] ;
   float src2[NI] ;
   float dst1[NI * NJ] ;
   float srca[NJ * NI] ;
@@ -730,7 +782,6 @@ int main(int argc, char **argv){
     printf("decimating NJ = %d points by %d => %d elements\n",NJ,nd,np) ;
   }
 
-  for(i=0 ; i < NI ; i++) src1[i] = i + 1.0f ;
   for(i=0 ; i < NI ; i++) src2[i] = 0.0f ;
   printf("========= original C data (%d,%d)=========\n",NJ,NI) ;
   for(j=0 ; j<NJ ; j++){
