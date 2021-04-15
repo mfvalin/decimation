@@ -15,10 +15,14 @@ decimate.Abs: decimate.c
 
 test:	decimate.Abs
 	./$<
+	rm -f ./$<
 
-test_ftn: decimate_test.F90 decimate.c.o
+test_ftn: decimate_ftn.Abs
+	./$<
+	rm -f ./$<
+
+decimate_ftn.Abs:	decimate_test.F90 decimate.c.o
 	$(FC) -I. $(FFLAGS)  $(DEFINES) decimate_test.F90 decimate.c.o -o decimate_ftn.Abs
-	./decimate_ftn.Abs
 
 clean:
 	rm -f *.o *.Abs a.out

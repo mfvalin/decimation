@@ -32,6 +32,144 @@ int N_decimated(int npts, int nd){
   return (npts - (ntup * nd) + ntup) ;
 }
 //
+// ============================= decimation by N =============================
+//                                 general case
+//
+// decimation by an arbitrary factor of a 1D array
+static inline int Decimate_byn_1d(float *src1, int by, float *dst, int ni, int li){
+  int i, j, k, l, pre, li0 ;
+  int ntup = (ni-2) / by ;                             // number of averaged groups of rows
+  float scale = 1.0f / by ;
+  int by2 = (li == 0) ? 1 : by ;                       // number of rows to average (1 if li == 0)
+  float scale1 = (li == 0) ? 1.0f : scale ;            // scaling for the "verbatim" case
+  float scale2 = (li == 0) ? scale : scale * scale ;   // scaling for the "multiple rows" case
+
+  pre = ni - (by * ntup) - 1 ;
+
+  for(i = 0 ; i < pre ; i++) {                                        // first pre point(s) verbatim
+    dst[i] = 0;
+    for(l = 0 , li0 = 0 ; l < by2 ; li0 += li, l++)                   // loop over "by" rows
+      dst[i] += src1[li0 + i] ;
+    dst[i] *= scale1 ;
+  }
+
+  for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=by) {              // loop over ntup groups (by x by)
+    dst[i] = 0 ;
+    for(l = 0 , li0 = 0 ; l < by2 ; li0 += li, l++)                   // loop across "by" rows
+      for(k = 0 ; k < by ; k++)                                       // loop in row across "by" points
+        dst[i] += src1[j + k + li0] ;
+    dst[i] *= scale2 ;
+  }
+
+  dst[i] = 0 ;
+  for(l = 0 , li0 = 0 ; l < by2 ; li0 += li, l++)                     // last point verbatim
+    dst[i] += src1[li0 + j] ;
+  dst[i] *= scale1 ;
+  
+  return i + 1 ;
+}
+
+// decimation by by an arbitrary factor of a 2D array
+int Decimate_byn_2d(float *src, int by, float *dst, int ni, int li, int nj){
+  int itup = (ni-2)/by ;                      // number of averaged pairs along i
+  int jtup = (nj-2)/by ;                      // number of averaged pairs along j
+  int ipre = ni - (by * itup) - 1 ;
+  int jpre = nj - (by * jtup) - 1 ;
+  int nid = ipre + 1 + itup ;                 // total number of decimated points along i
+  int j;
+
+  if(itup <= 1 || jtup <= 1) return -1 ;      // one or both dimensions too small
+
+  for(j = 0 ; j < jpre ; j ++){
+    Decimate_byn_1d(src, by, dst, ni, 0) ;    // first jpre row(s) (only decimated along i)
+    src += li ;
+    dst += nid ;
+  }
+  for(j=1 ; j <= jtup ; j++) {                // jtup  blocks of "by" rows
+    Decimate_byn_1d(src, by, dst, ni, li) ;
+    src += (li*by) ;
+    dst += nid ;
+  }
+  Decimate_byn_1d(src, by, dst, ni, 0) ;      // last row (only decimated along i)
+  return 0 ;
+}
+
+// inverse decimation by an arbitrary factor of a 1D array (restore to original dimension)
+static inline int UnDecimate_byn_1d(float *src, int by, float *dst, int ni){
+  int i, j, pre ;
+  int ntup = (ni-2) / by ;                                     // number of averaged groups of rows
+  int nd = (ni - (ntup * by) + ntup) ;
+  float xm, xi, xp, fm, fp , scale ;
+  float xinc = (by + 1) * .5f ;                                // first interpolation interval width
+  float scale1 = 1.0f / by ;                                   // weight for middle interpolation intervals
+  float scale2 = 1.0f / xinc ;                                 // weight for first and last interpolation intervals
+
+  pre = ni - (by * ntup) - 1 ;
+  for(i = 0 ; i < pre ; i++) dst[i] = src[i] ;                 // first non averaged points
+
+  xm = pre ;           fm = src[pre-1] ;                       // bottom of interval for interpolation
+  xp = xm + xinc ;     fp = src[pre] ;                         // top of interval for interpolation
+  scale = scale2 ;                                             // first interpolation interval
+  j = pre ;
+  for(i = pre+1 ; i < ni ; i++) {
+    xi = i ;
+    dst[i-1] = fm + (fp - fm) * (xi - xm) * scale  ;
+    if(xi > xp) {                                              // next pair of source points
+      fm = fp ;      fp = src[++j] ;
+      xm = xp ;      xp = xp + by ;   scale = scale1 ;         // middle intervals
+      if(xp > ni) {                                            // last interval
+        xp = ni ;    scale = scale2 ;
+      }
+    }
+  }
+
+  dst[ni-1] = src[nd - 1] ;                                    // last point verbatim
+  
+  return i + 1 ;
+}
+
+// inverse decimation by an arbitrary factor of a 2D array (restore to original dimensions)
+int UnDecimate_byn_2d(float *src, int by, float *dst, int ni, int li, int nj){
+  int itup = (ni-2)/by ;                  // number of averaged pairs along i
+  int jtup = (nj-2)/by ;                  // number of averaged pairs along j
+  int ipre = ni - (by * itup) - 1 ;
+  int jpre = nj - (by * jtup) - 1 ;
+  int nid = ipre + 1 + itup ;            // total number of decimated points along i
+  int i, j;
+  float ym, yi, yp, scale ;
+  float *fm, *fp ;
+  float yinc = (by + 1) * .5f ;                        // first interpolation interval width
+  float scale1 = 1.0f / by ;                           // scaling for the "verbatim" case
+  float scale2 = 1.0f / yinc ;                         // scaling for the "multiple rows" case
+  float *topd = dst + li * (nj -1 ) ;    // top row of undecimated array used as temporary 
+
+  for(j = 0 ; j < jpre ; j ++){
+    UnDecimate_byn_1d(src, by, dst, ni) ;    // undecimate first jpre rows (no processing along j)
+    src += nid ;
+    dst += li ;
+  }
+
+  ym = jpre ;         fm = src - nid ;
+  yp = ym + yinc ;   fp = src ;
+  scale = scale2 ;
+  for(j = jpre+1 ; j < nj ; j++) {
+    yi = j;
+    for(i=0 ; i<nid ; i++) topd[i] = fm[i] + (fp[i] - fm[i]) * (yi - ym) * scale  ;
+    UnDecimate_byn_1d(topd, by, dst, ni) ;
+    dst += li ;
+    if(yi > yp){
+      fm = fp ;      fp = fm + nid ;
+      ym = yp ;      yp = yp + by ;   scale = scale1 ; 
+      if(yp > nj){
+        yp = nj ;
+        scale = scale2 ;
+      }
+    }
+  }
+  // undecimate last row (no processing along j)
+  UnDecimate_byn_1d(fp, by, dst, ni) ;
+  return 0 ;
+}
 // ============================= decimation by 2 =============================
 //
 //  +---+     +---+---+---+---+     +---+---+---+
@@ -56,7 +194,7 @@ static inline int Decimate_by2_1d(float *src1, float *dst, int ni, int li){
     for(i = 0 ; i < pre ; i++) dst[i] = src1[i];                       // first pre point(s) verbatim
 
     for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=2) {              // averaged tuples (pairs)
-      dst[i] = ( src1[j] + src1[j+1] ) * .2f ;
+      dst[i] = ( src1[j] + src1[j+1] ) * .5f ;
     }
 
     dst[i] = src1[j] ;                                                 // last point verbatim
@@ -565,16 +703,19 @@ int Decimate_by5_2d(float *src, float *dst, int ni, int li, int nj){
   if(itup <= 1 || jtup <= 1) return -1 ;  // one or both dimensions too small
 
   for(j = 0 ; j < jpre ; j ++){
-    Decimate_by5_1d(src, dst, ni, 0) ;    // first row
+//     Decimate_by5_1d(src, dst, ni, 0) ;    // first row
+    Decimate_byn_1d(src, 5, dst, ni, 0) ;
     src += li ;
     dst += nid ;
   }
   for(j=1 ; j <= jtup ; j++) {            // jtup  blocks of 5 rows
-    Decimate_by5_1d(src, dst, ni, li) ;
+//     Decimate_by5_1d(src, dst, ni, li) ;
+    Decimate_byn_1d(src, 5, dst, ni, li) ;
     src += (li+li+li+li+li) ;
     dst += nid ;
   }
-  Decimate_by5_1d(src, dst, ni, 0) ;      // last row
+//   Decimate_by5_1d(src, dst, ni, 0) ;      // last row
+  Decimate_byn_1d(src, 5, dst, ni, 0) ;
   return 0 ;
 }
 
@@ -688,6 +829,8 @@ int UnDecimate_by5_2d(float *src, float *dst, int ni, int li, int nj){
 
 // 1D general decimation function
 int Decimate_1d(float *src, int factor, float *dst, int ni, int li){
+  if(factor < 2) return -1 ;
+//   return Decimate_byn_1d(src, factor, dst, ni, li) ;
   switch(factor)
   {
     case 2:
@@ -699,12 +842,14 @@ int Decimate_1d(float *src, int factor, float *dst, int ni, int li){
     case 5:
       return Decimate_by5_1d(src, dst, ni, li) ;
     default:
-      return -1 ;
+      return Decimate_byn_1d(src, factor, dst, ni, li) ;
   }
 }
 
 // 2D general decimation function
 int Decimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
+  if(factor < 2) return -1 ;
+//   return Decimate_byn_2d(src, factor, dst, ni, li, nj) ;
   switch(factor)
   {
     case 2:
@@ -716,12 +861,14 @@ int Decimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
     case 5:
       return Decimate_by5_2d(src, dst, ni, li, nj) ;
     default:
-      return -1 ;
+      return Decimate_byn_2d(src, factor, dst, ni, li, nj) ;
   }
 }
 
 // 1D general inverse decimation (restore) function
 int UnDecimate_1d(float *src, int factor, float *dst, int ni){
+  if(factor < 2) return -1 ;
+//   return UnDecimate_byn_1d(src, factor, dst, ni) ;
   switch(factor)
   {
     case 2:
@@ -737,12 +884,14 @@ int UnDecimate_1d(float *src, int factor, float *dst, int ni){
       UnDecimate_by5_1d(src, dst, ni) ;
       return 0 ;
     default:
-      return -1 ;
+      return UnDecimate_byn_1d(src, factor, dst, ni) ;
   }
 }
 
 // 2D general inverse decimation (restore) function
 int UnDecimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
+  if(factor < 2) return -1 ;
+//   return UnDecimate_byn_2d(src, factor, dst, ni, li, nj) ;
   switch(factor)
   {
     case 2:
@@ -754,7 +903,7 @@ int UnDecimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
     case 5:
       return UnDecimate_by5_2d(src, dst, ni, li, nj) ;
     default:
-      return -1 ;
+      return UnDecimate_byn_2d(src, factor, dst, ni, li, nj) ;
   }
 }
 
@@ -786,20 +935,22 @@ int main(int argc, char **argv){
   printf("========= original C data (%d,%d)=========\n",NJ,NI) ;
   for(j=0 ; j<NJ ; j++){
     for(i=0 ; i<NI ; i++){
-      srca[j*NI +i] = i + j + 1.0f ;
+      srca[j*NI +i] = (i + j + 1.0f) * 1.0f ;
       printf("%4.1f ",srca[j*NI +i]) ;
     }
     printf("\n");
   }
 //
-// test decimation by 2,3,4,5
+// test decimation by 2,3,4,5,6,7
 //
-  for(by = 2 ; by < 6 ; by++){
+  for(by = 2 ; by < 3 ; by++){
     printf("\n");
     printf(" 1 D decimation/restore by %d (top row)\n", by);
     np = Decimate_1d(srca, by, dst1, NI, 0) ;
+//     np = Decimate_byn_1d(srca, by, dst1, NI, 0) ;
     for(i=0 ; i < np ; i++) printf("%4.1f ",dst1[i]) ;
     printf("\n");
+    for(i=0 ; i<NI ; i++) src2[i] = 0.0 ;
     UnDecimate_1d(dst1, by, src2, NI) ;
     for(i=0 ; i < NI ; i++) printf("%4.1f ",src2[i]) ;
     printf("\n\n");
