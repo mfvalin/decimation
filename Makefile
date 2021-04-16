@@ -21,8 +21,8 @@ test_ftn: decimate_ftn.Abs
 	./$<
 	rm -f ./$<
 
-decimate_ftn.Abs:	decimate_test.F90 decimate.c.o
-	$(FC) -I. $(FFLAGS)  $(DEFINES) decimate_test.F90 decimate.c.o -o decimate_ftn.Abs
+decimate_ftn.Abs:	decimate_test.F90 decimate.c.o decimate_array.F90
+	$(FC) -I. $(FFLAGS)  $(DEFINES) decimate_array.F90 decimate_test.F90 decimate.c.o -o decimate_ftn.Abs
 
 clean:
-	rm -f *.o *.Abs a.out
+	rm -f *.o *.Abs a.out *.mod

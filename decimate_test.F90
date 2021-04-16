@@ -1,5 +1,5 @@
 program decimate_test
-  use ISO_C_BINDING
+  use decimate_array
   implicit none
 #if ! defined(NI)
 #define NI 12
@@ -7,13 +7,13 @@ program decimate_test
 #if ! defined(NJ)
 #define NJ 12
 #endif
-#include <decimate.hf>
 
   real, dimension(NI,NJ) :: src1, src2
-  real, dimension(:,:), allocatable :: dst1
+  real, dimension(:,:), pointer :: dst1
   integer :: i, j, status, by
 
   write(6,'(A,I3,A,I3,A)')" ==== original Fortran data (",NI,",",NJ,')'
+  write(6,*)'bi-linear function : f(i,j) = (i + 1) * (j+1)'
   do j = 1, NJ
     do i = 1, NI
 !       src1(i,j) = (i + j - 1.0) * 1.0
@@ -25,7 +25,7 @@ program decimate_test
 
   do by = 2, 11
     write(6,'(A,I3,A)')" ==== decimation by",by,' ===='
-    ALLOC_DECIMATED(dst1, NI, NJ, by)
+    dst1 => decimated_array(NI, NJ, by)   ! allocate container for decimated array
     write(6,*)'   1 dimension test'
     dst1 = 0
     status = Decimate_1d(src1, by, dst1, NI, 0)

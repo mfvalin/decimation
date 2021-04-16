@@ -52,8 +52,6 @@ interface
   end function UnDecimate_2d
 end interface
 
-#define ALLOC_DECIMATED(array, nx, ny, nby) allocate( array( n_decimated(nx,nby), n_decimated(ny,nby) ) )
-
 #else
 
 int N_decimated(int npts, int nd);
