@@ -17,14 +17,48 @@ module decimate_array
   use ISO_C_BINDING
   implicit none
 #include <decimate.hf>
+
+  interface decimate
+    procedure decimate1
+    procedure decimate2
+  end interface
+
+  interface undecimate
+    procedure UnDecimate_1d    ! (src, factor, dst, ni)
+    procedure UnDecimate_2d    ! (src, factor, dst, ni, li, nj)
+  end interface
  contains
  
-  function decimated_array(ni, nj, by) result (p)
+  function decimated_array(ni, nj, by) result (p)  ! allocate container for decimated result
     implicit none
     integer, intent(IN), value :: ni, nj, by
     real(kind=4), dimension(:,:), pointer :: p
     allocate( p(n_decimated(ni,by), n_decimated(nj,by) ) )
     return
   end function decimated_array
+
+  function decimate1(what, by, ni) result(d)
+    implicit none
+    real(kind=4), dimension(*), intent(IN) :: what
+    integer, intent(IN), value :: ni, by
+    real(kind=4), dimension(:), pointer :: d
+
+    integer :: status
+
+    allocate( d(n_decimated(ni,by)) )
+    status = Decimate_1d(what, by, d, ni, 0)
+  end function decimate1
+
+  function decimate2(what, by, ni, li, nj) result(d)
+    implicit none
+    real(kind=4), dimension(li,*), intent(IN) :: what
+    integer, intent(IN), value :: ni, li, nj, by
+    real(kind=4), dimension(:,:), pointer :: d
+
+    integer :: status
+
+    allocate( d(n_decimated(ni,by), n_decimated(nj,by)) )
+    status = Decimate_2d(what, by, d, ni, li, nj)
+  end function decimate2
 
 end module

@@ -14,6 +14,7 @@
  * Author:
  *     M. Valin,   Recherche en Prevision Numerique, April 2021
  */
+#include <string.h>
 //
 // linear decimation and inverse decimation (restore to initial dimensions) routines
 // support is for (preferably large) float (Fortran real *4) data elements
@@ -27,8 +28,9 @@
 //
 // number of elements after decimation of npts elements by nd
 int N_decimated(int npts, int nd){
-  int ntup = (npts-2) / nd ;  // number of averaged points
-  if(ntup == 1) return npts ; // there MUST be more than 1 group of averaged elements
+  int ntup ;  // number of averaged points
+  ntup = (npts-2) / ((nd >1) ? nd : 1) ;  // number of averaged points
+//   if(ntup == 1) return npts ; // there MUST be more than 1 group of averaged elements
   return (npts - (ntup * nd) + ntup) ;
 }
 //
@@ -78,7 +80,7 @@ int Decimate_byn_2d(float *src, int by, float *dst, int ni, int li, int nj){
   int nid = ipre + 1 + itup ;                 // total number of decimated points along i
   int j;
 
-  if(itup <= 1 || jtup <= 1) return -1 ;      // one or both dimensions too small
+//   if(itup <= 1 || jtup <= 1) return -1 ;      // one or both dimensions too small
 
   for(j = 0 ; j < jpre ; j ++){
     Decimate_byn_1d(src, by, dst, ni, 0) ;    // first jpre row(s) (only decimated along i)
@@ -148,7 +150,7 @@ int UnDecimate_byn_2d(float *src, int by, float *dst, int ni, int li, int nj){
     src += nid ;
     dst += li ;
   }
-
+// printf("itup = %d, jtup = %d, ipre = %d, jpre = %d\n",itup,jtup,ipre,jpre);
   ym = jpre ;         fm = src - nid ;
   yp = ym + yinc ;   fp = src ;
   scale = scale2 ;
@@ -828,10 +830,15 @@ int UnDecimate_by5_2d(float *src, float *dst, int ni, int li, int nj){
 }
 
 // 1D general decimation function
-int Decimate_1d(float *src, int factor, float *dst, int ni, int li){
-  if(factor < 2) return -1 ;
-//   return Decimate_byn_1d(src, factor, dst, ni, li) ;
-  switch(factor)
+int Decimate_1d(float *src, int by, float *dst, int ni, int li){
+//   if(by < 2) return -1 ;
+  if(by < 2) {
+    by = 1 ;
+    memcpy(dst, src, ni * sizeof(float)) ;
+    return ni ;
+  }
+  if(ni < 2 * (by+1)) return Decimate_byn_1d(src, by, dst, ni, li) ;
+  switch(by)
   {
     case 2:
       return Decimate_by2_1d(src, dst, ni, li) ;
@@ -842,15 +849,20 @@ int Decimate_1d(float *src, int factor, float *dst, int ni, int li){
     case 5:
       return Decimate_by5_1d(src, dst, ni, li) ;
     default:
-      return Decimate_byn_1d(src, factor, dst, ni, li) ;
+      return Decimate_byn_1d(src, by, dst, ni, li) ;
   }
 }
 
 // 2D general decimation function
-int Decimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
-  if(factor < 2) return -1 ;
-//   return Decimate_byn_2d(src, factor, dst, ni, li, nj) ;
-  switch(factor)
+int Decimate_2d(float *src, int by, float *dst, int ni, int li, int nj){
+//   if(by < 2) return -1 ;
+  if(by < 2) {
+    by = 1 ;
+    while(nj-- > 0) { memcpy(dst, src, ni * sizeof(float)) ; src += li ; dst += ni; }
+    return 0 ;
+  }
+  if(ni < 2 * (by+1) || nj < 2 * (by + 1) ) return Decimate_byn_2d(src, by, dst, ni, li, nj) ;
+  switch(by)
   {
     case 2:
       return Decimate_by2_2d(src, dst, ni, li, nj) ;
@@ -861,15 +873,20 @@ int Decimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
     case 5:
       return Decimate_by5_2d(src, dst, ni, li, nj) ;
     default:
-      return Decimate_byn_2d(src, factor, dst, ni, li, nj) ;
+      return Decimate_byn_2d(src, by, dst, ni, li, nj) ;
   }
 }
 
 // 1D general inverse decimation (restore) function
-int UnDecimate_1d(float *src, int factor, float *dst, int ni){
-  if(factor < 2) return -1 ;
-//   return UnDecimate_byn_1d(src, factor, dst, ni) ;
-  switch(factor)
+int UnDecimate_1d(float *src, int by, float *dst, int ni){
+//   if(by < 2) return -1 ;
+  if(by < 2) {
+    by = 1 ;
+    memcpy(dst, src, ni * sizeof(float)) ;
+    return 0 ;
+  }
+  if(ni < 2 * (by+1)) return UnDecimate_byn_1d(src, by, dst, ni) ;
+  switch(by)
   {
     case 2:
       UnDecimate_by2_1d(src, dst, ni) ;
@@ -884,15 +901,20 @@ int UnDecimate_1d(float *src, int factor, float *dst, int ni){
       UnDecimate_by5_1d(src, dst, ni) ;
       return 0 ;
     default:
-      return UnDecimate_byn_1d(src, factor, dst, ni) ;
+      return UnDecimate_byn_1d(src, by, dst, ni) ;
   }
 }
 
 // 2D general inverse decimation (restore) function
-int UnDecimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
-  if(factor < 2) return -1 ;
-//   return UnDecimate_byn_2d(src, factor, dst, ni, li, nj) ;
-  switch(factor)
+int UnDecimate_2d(float *src, int by, float *dst, int ni, int li, int nj){
+//   if(by < 2) return -1 ;
+  if(by < 2) {
+    by = 1 ;
+    while(nj-- > 0) { memcpy(dst, src, ni * sizeof(float)) ; src += ni ; dst += li; }
+    return 0 ;
+  }
+  if(ni < 2 * (by+1) || nj < 2 * (by + 1) ) return UnDecimate_byn_2d(src, by, dst, ni, li, nj) ;
+  switch(by)
   {
     case 2:
       return UnDecimate_by2_2d(src, dst, ni, li, nj) ;
@@ -903,7 +925,7 @@ int UnDecimate_2d(float *src, int factor, float *dst, int ni, int li, int nj){
     case 5:
       return UnDecimate_by5_2d(src, dst, ni, li, nj) ;
     default:
-      return UnDecimate_byn_2d(src, factor, dst, ni, li, nj) ;
+      return UnDecimate_byn_2d(src, by, dst, ni, li, nj) ;
   }
 }
 

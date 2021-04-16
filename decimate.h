@@ -22,12 +22,12 @@ interface
   function Decimate_2d(src, factor, dst, ni, li, nj) result(status) bind(C,name='Decimate_2d')
     import :: C_FLOAT, C_INT
     implicit none
-    real(C_FLOAT), dimension(*), intent(IN)  :: src
-    integer(C_INT), intent(IN), value        :: factor
-    real(C_FLOAT), dimension(*), intent(OUT) :: dst
-    integer(C_INT), intent(IN), value        :: ni
-    integer(C_INT), intent(IN), value        :: li
-    integer(C_INT), intent(IN), value        :: nj
+    real(C_FLOAT), dimension(li,*), intent(IN)  :: src     ! 2 dimensional array
+    integer(C_INT), intent(IN), value           :: factor
+    real(C_FLOAT), dimension(*), intent(OUT)    :: dst     ! 2 dimensional array
+    integer(C_INT), intent(IN), value           :: ni
+    integer(C_INT), intent(IN), value           :: li
+    integer(C_INT), intent(IN), value           :: nj
     integer(C_INT)  :: status
   end function Decimate_2d
   function UnDecimate_1d(src, factor, dst, ni) result(status) bind(C,name='UnDecimate_1d')
@@ -42,12 +42,12 @@ interface
   function UnDecimate_2d(src, factor, dst, ni, li, nj) result(status) bind(C,name='UnDecimate_2d')
     import :: C_FLOAT, C_INT
     implicit none
-    real(C_FLOAT), dimension(*), intent(IN)  :: src
-    integer(C_INT), intent(IN), value        :: factor
-    real(C_FLOAT), dimension(*), intent(OUT) :: dst
-    integer(C_INT), intent(IN), value        :: ni
-    integer(C_INT), intent(IN), value        :: li
-    integer(C_INT), intent(IN), value        :: nj
+    real(C_FLOAT), dimension(1,*), intent(IN)   :: src     ! fudged notation to indicate 2 dimensional array
+    integer(C_INT), intent(IN), value           :: factor
+    real(C_FLOAT), dimension(li,*), intent(OUT) :: dst     ! 2 dimensional array
+    integer(C_INT), intent(IN), value           :: ni
+    integer(C_INT), intent(IN), value           :: li
+    integer(C_INT), intent(IN), value           :: nj
     integer(C_INT)  :: status
   end function UnDecimate_2d
 end interface
