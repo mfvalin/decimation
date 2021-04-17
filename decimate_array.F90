@@ -20,7 +20,9 @@ module decimate_array
 
   interface decimate
     procedure decimate1
+    procedure Decimate_1d
     procedure decimate2
+    procedure Decimate_2d
   end interface
 
   interface undecimate

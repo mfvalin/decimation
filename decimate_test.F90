@@ -39,15 +39,17 @@ program decimate_test
 
   do by = 2, 8     ! testing 1 and 2 dimensional decimation/restore by factors of 2 through 8
     write(6,'(A,I3,A)')" ==== decimation by",by,' ===='
-    dst1 => decimated_array(NI, NJ, by)           ! allocate container for 2D decimated array
+    dst1 => decimated_array(NI, NJ, by)           ! allocate container large enough for 2D decimated array
     dst1 = 0
     write(6,*)'   1 dimensional test, along NI, then along NJ'
     ! =======================  1 D test along row  =======================
-!   status = Decimate_1d(src1, by, dst1, NI, 0)   ! direct call to specific function
-    dst1d => Decimate(src1(:,1), by, NI)          ! generic call, test along first row
+    dst1d => Decimate(src1(:,1), by, NI)           ! generic call, with auto allocate
+    status = Decimate(src1(:,1), by, dst1d, NI, 0) ! alternate form for generic call
+    status = Decimate_1d(src1,   by, dst1d, NI, 0) ! explicit call to specific function
     src2 = 0.0
-!     status = UnDecimate_1d(dst1, by, src2, NI)
-    status = UnDecimate(dst1d, by, src2(:,1), NI)
+
+    status = UnDecimate(   dst1d, by, src2(:,1), NI) ! generic call
+    status = UnDecimate_1d(dst1d, by, src2(:,1), NI) ! explicit call to specific function
     if(maxval( abs(src2(:,1)-src1(:,1)) / src1(:,1) )  > 1.0E-6 ) then
       write(6,1) 'ERROR: max difference =',abs(maxval(src2(:,1)-src1(:,1))), &
                  ', max rel error  =',maxval(abs(src2(:,1)-src1(:,1))/src1(:,1)), &
@@ -61,9 +63,13 @@ program decimate_test
     endif
     deallocate(dst1d)
     ! =======================  1 D test along column  ====================
-    dst1d2 => Decimate(src1(1,:), by, NJ)       ! generic call, test along first column
+    dst1d2 => Decimate(src1(1,:), by, NJ)                ! generic call, with auto allocate
+    status  = Decimate(src1(1,:),    by, dst1d2, NJ, 0)  ! alternate form for generic call
+    status  = Decimate_1d(src1(1,:), by, dst1d2, NJ, 0)  ! explicit call to specific function
     src2 = 0.0
-    status = UnDecimate(dst1d2, by, src2(1,:), NJ)
+
+    status = UnDecimate(   dst1d2, by, src2(1,:), NJ)    ! generic call
+    status = UnDecimate_1d(dst1d2, by, src2(1,:), NJ)    ! explicit call to specific function
     if(maxval( abs(src2(1,:)-src1(1,:)) / src1(1,:) )  > 1.0E-6 ) then
       write(6,1) 'ERROR: max difference =',abs(maxval(src2(1,:)-src1(1,:))), &
                  ', max rel error  =',maxval(abs(src2(1,:)-src1(1,:))/src1(1,:)), &
@@ -79,16 +85,16 @@ program decimate_test
     ! ===============================  2 D test  ===========================
     write(6,*)'   2 dimensional test'
     dst1 = 0.0
-!   status = Decimate_2d(src1, by, dst1, NI, NI, NJ)   ! direct call to specific function
-    dst2d => Decimate(src1, by, NI, NI, NJ)
+    dst2d => Decimate(   src1, by, NI, NI, NJ)          ! generic call, with auto allocate
+    status = Decimate(   src1, by, dst2d, NI, NI, NJ)   ! alternate form for generic call
+    status = Decimate_2d(src1, by, dst2d, NI, NI, NJ)   ! explicit call to specific function
 !     do j = 1, N_decimated(NJ, by)
 !       write(6,'(30F6.1)')dst1(:,j)
 !     enddo
 
     src2 = 0.0
-!   status = UnDecimate_2d(dst1, by, src2, NI, NI, NJ)   ! direct call to specific function
-    status = UnDecimate(dst2d, by, src2, NI, NI, NJ)
-!     if(any(abs(src1 - src2) > .0001 )) then
+    status = UnDecimate(   dst2d, by, src2, NI, NI, NJ)   ! generic call
+    status = UnDecimate_2d(dst2d, by, src2, NI, NI, NJ)   ! explicit call to specific function
     if(maxval(abs(src2-src1)/src1) > 1.0E-6) then
        write(6,*) 'ERROR: max difference =',abs(maxval(src2-src1)), &
                   ', max rel error  =',(maxval(abs(src2-src1)/src1)), &
@@ -109,7 +115,7 @@ program decimate_test
 1 format(1X,A,G12.4,A,G12.4,A,I6)
  contains
 
- function ulp_diff_1(f1, f2, ni) result(ulp)
+ function ulp_diff_1(f1, f2, ni) result(ulp)  ! max distance in units of last place for 1 D arrays
    implicit none
    integer, intent(IN), value :: ni
    real, dimension(ni) :: f1, f2
@@ -121,7 +127,7 @@ program decimate_test
    enddo
  end function ulp_diff_1
 
- function ulp_diff_2(f1, f2, ni, li, nj) result(ulp)
+ function ulp_diff_2(f1, f2, ni, li, nj) result(ulp)  ! max distance in units of last place for 2 D arrays
    implicit none
    integer, intent(IN), value :: ni, li, nj
    real, dimension(li,nj) :: f1, f2
