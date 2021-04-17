@@ -16,7 +16,7 @@ program decimate_test
   real, dimension(:,:), pointer :: dst2d
   integer :: i, j, status, by
 
-  write(6,'(A,I3,A,I3,A)')" ==== original Fortran data (",NI,",",NJ,')'
+  write(6,'(A,I4,A,I4,A)')" ==== original Fortran data (",NI,",",NJ,')'
   write(6,*)'bi-linear function : f(i,j) = (i + 1) * (j+1)'
   allocate( src0(NI,NJ,3) )
   allocate( src1(NI,NJ) )
@@ -37,7 +37,7 @@ program decimate_test
   dst2d => Decimate(src0(:,:,1), 2, NI, NI, NJ)
   deallocate(dst2d)
 
-  do by = 0, 11     ! testing 1 and 2 dimensional decimation/restore by factors of 0 through 11
+  do by = 2, 8     ! testing 1 and 2 dimensional decimation/restore by factors of 2 through 8
     write(6,'(A,I3,A)')" ==== decimation by",by,' ===='
     dst1 => decimated_array(NI, NJ, by)           ! allocate container for 2D decimated array
     dst1 = 0
@@ -49,13 +49,15 @@ program decimate_test
 !     status = UnDecimate_1d(dst1, by, src2, NI)
     status = UnDecimate(dst1d, by, src2(:,1), NI)
     if(maxval( abs(src2(:,1)-src1(:,1)) / src1(:,1) )  > 1.0E-6 ) then
-      write(6,*) 'ERROR: max difference =',abs(maxval(src2(:,1)-src1(:,1))), &
-                 ', max rel error  =',maxval(abs(src2(:,1)-src1(:,1))/src1(:,1))
+      write(6,1) 'ERROR: max difference =',abs(maxval(src2(:,1)-src1(:,1))), &
+                 ', max rel error  =',maxval(abs(src2(:,1)-src1(:,1))/src1(:,1)), &
+                 ', maxulp =',ulp_diff_1(src2(:,1),src1(:,1),NI)
       write(6,'(30F6.1)')src2(:,1)
       write(6,'(30F6.1)')abs(src2(:,1) - src1(:,1))
     else
-      write(6,*) 'SUCCESS: max difference =',abs(maxval(src2(:,1)-src1(:,1))), &
-                 ', max rel error  =',maxval(abs(src2(:,1)-src1(:,1))/src1(:,1))
+      write(6,1) 'SUCCESS: max difference =',abs(maxval(src2(:,1)-src1(:,1))), &
+                 ', max rel error  =',maxval(abs(src2(:,1)-src1(:,1))/src1(:,1)), &
+                 ', maxulp =',ulp_diff_1(src2(:,1),src1(:,1),NI)
     endif
     deallocate(dst1d)
     ! =======================  1 D test along column  ====================
@@ -63,13 +65,15 @@ program decimate_test
     src2 = 0.0
     status = UnDecimate(dst1d2, by, src2(1,:), NJ)
     if(maxval( abs(src2(1,:)-src1(1,:)) / src1(1,:) )  > 1.0E-6 ) then
-      write(6,*) 'ERROR: max difference =',abs(maxval(src2(1,:)-src1(1,:))), &
-                 ', max rel error  =',maxval(abs(src2(1,:)-src1(1,:))/src1(1,:))
+      write(6,1) 'ERROR: max difference =',abs(maxval(src2(1,:)-src1(1,:))), &
+                 ', max rel error  =',maxval(abs(src2(1,:)-src1(1,:))/src1(1,:)), &
+                 ', maxulp =',ulp_diff_1(src2(1,:),src1(1,:),NJ)
 !       write(6,'(30F6.1)')src2(1,:)
 !       write(6,'(30F6.1)')abs(src2(1,:) - src1(1,:))
     else
-      write(6,*) 'SUCCESS: max difference =',abs(maxval(src2(1,:)-src1(1,:))), &
-                 ', max rel error  =',maxval(abs(src2(1,:)-src1(1,:))/src1(1,:))
+      write(6,1) 'SUCCESS: max difference =',abs(maxval(src2(1,:)-src1(1,:))), &
+                 ', max rel error  =',maxval(abs(src2(1,:)-src1(1,:))/src1(1,:)), &
+                 ', maxulp =',ulp_diff_1(src2(1,:),src1(1,:),NJ)
     endif
     deallocate(dst1d2)
     ! ===============================  2 D test  ===========================
@@ -87,24 +91,49 @@ program decimate_test
 !     if(any(abs(src1 - src2) > .0001 )) then
     if(maxval(abs(src2-src1)/src1) > 1.0E-6) then
        write(6,*) 'ERROR: max difference =',abs(maxval(src2-src1)), &
-                  ', max rel error  =',(maxval(abs(src2-src1)/src1))
+                  ', max rel error  =',(maxval(abs(src2-src1)/src1)), &
+                  ', maxulp =',ulp_diff_2(src2,src1,NI,NI,NJ)
       do j = 1, NJ
         write(6,'(30F6.1)')src2(:,j)
 !         write(6,'(30F6.1)')abs(src2(:,j) - src1(:,j))
       enddo
       write(6,*)
     else
-      write(6,*) 'SUCCESS: max difference =',abs(maxval(src2-src1)), &
-                ', max rel error  =',maxval(abs(src2-src1)/src1)
+      write(6,1) 'SUCCESS: max difference =',abs(maxval(src2-src1)), &
+                 ', max rel error  =',maxval(abs(src2-src1)/src1), &
+                 ', maxulp =',ulp_diff_2(src2,src1,NI,NI,NJ)
     endif
     deallocate(dst2d)
     deallocate(dst1)
  enddo
-
+1 format(1X,A,G12.4,A,G12.4,A,I6)
  contains
 
- subroutine ulp_diff_1(f1, f2, ni)
- end subroutine ulp_diff_1
+ function ulp_diff_1(f1, f2, ni) result(ulp)
+   implicit none
+   integer, intent(IN), value :: ni
+   real, dimension(ni) :: f1, f2
+   integer :: ulp
+   integer :: i
+   ulp = 0
+   do i=1,ni
+     ulp = max(ulp, abs(transfer(f1(i),1)-transfer(f2(i),1)))
+   enddo
+ end function ulp_diff_1
+
+ function ulp_diff_2(f1, f2, ni, li, nj) result(ulp)
+   implicit none
+   integer, intent(IN), value :: ni, li, nj
+   real, dimension(li,nj) :: f1, f2
+   integer :: ulp
+   integer :: i, j
+   ulp = 0
+   do j=1,nj
+   do i=1,ni
+     ulp = max(ulp, abs(transfer(f1(i,j),1)-transfer(f2(i,j),1)))
+   enddo
+   enddo
+ end function ulp_diff_2
   
 end program
 
