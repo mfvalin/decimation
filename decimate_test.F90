@@ -72,7 +72,6 @@ program decimate_test
     call undecimate_array
     deallocate(dst2d)
  enddo
-1 format(1X,A,G12.4,A,G12.4,A,I6)
  contains
 
   function ulp_diff_1(f1, f2, ni) result(ulp)  ! max distance in units of last place for 1 D arrays
@@ -113,6 +112,7 @@ program decimate_test
                   ', max rel error  =',maxval(abs(src2(1,:)-src1(1,:))/src1(1,:)), &
                   ', maxulp =',ulp_diff_1(src2(1,:),src1(1,:),NJ)
       endif
+1 format(1X,A,G12.4,A,G12.4,A,I6)
   end subroutine verify_col
 
   subroutine verify_row
@@ -127,6 +127,7 @@ program decimate_test
                  ', max rel error  =',maxval(abs(src2(:,1)-src1(:,1))/src1(:,1)), &
                  ', maxulp =',ulp_diff_1(src2(:,1),src1(:,1),NI)
     endif
+1 format(1X,A,G12.4,A,G12.4,A,I6)
   end subroutine verify_row
 
   subroutine verify_all
@@ -144,6 +145,7 @@ program decimate_test
                  ', max rel error  =',maxval(abs(src2-src1)/src1), &
                  ', maxulp =',ulp_diff_2(src2,src1,NI,NI,NJ)
     endif
+1 format(1X,A,G12.4,A,G12.4,A,I6)
   end subroutine verify_all
 
   subroutine undecimate_row

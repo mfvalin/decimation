@@ -24,7 +24,7 @@ interface
     implicit none
     real(C_FLOAT), dimension(li,*), intent(IN)  :: src     ! 2 dimensional array
     integer(C_INT), intent(IN), value           :: factor
-    real(C_FLOAT), dimension(*), intent(OUT)    :: dst     ! 2 dimensional array
+    real(C_FLOAT), dimension(1,*), intent(OUT)  :: dst     ! 2 dimensional array
     integer(C_INT), intent(IN), value           :: ni
     integer(C_INT), intent(IN), value           :: li
     integer(C_INT), intent(IN), value           :: nj
