@@ -17,14 +17,26 @@
 #include <string.h>
 //
 // linear decimation and inverse decimation (restore to initial dimensions) routines
-// support is for (preferably large) float (Fortran real *4) data elements
+// for C float / Fortran real(kind=4) 1 or 2 dimensional (preferably large) arrays
 //
-// decimation by a factor of 2,3, or 4 / restore 
+// decimation / restore  by a factor of 2, 3, 4, 5, ... 
+// (explicit code for 2, 3, 4, 5)
+// (generic code otherwise)
 //
-// decimation is performed with simple N x N averaging (N = 2/3/4)
-// restoration is performed using linear interpolation
+// decimation is performed with simple N x N averaging 
+//
+// the first and last item along any direction are preserved as is
+// if the number of elements minus 2 is not a multiple of the decimation factor,
+// elements 2 -> 1 + mod(number of elements, decimation factor) are preserved as is
+// after the first element (always preserved)
+//
+// in a 1 dimansional array, the first and last element are never averaged
+// in a 2 dimensional array, it means that the 4 corner values are never averaged
+//
+// restoration is performed using linear interpolation along all dimensions
 //
 // a bi-linear array will be restored without loss (other than float rounding errors)
+// i.e. if f(i,j) = fx(i) * fy(j) where fx and fy are linear functions
 //
 //    Example of 1 D decimation
 //                original array ( 12 )                                       decimated by 3 ( 6 )
