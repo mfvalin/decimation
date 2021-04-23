@@ -8,7 +8,7 @@ DEFINES =
 all:	decimate.c.o decimate.Abs
 
 decimate.c.o: decimate.c
-	$(CC) -I. -c $(CFLAGS) $< -o $@
+	$(CC) -I. $(DEFINES) -c $(CFLAGS) $< -o $@
 
 decimate.Abs: decimate.c
 	$(CC) -I. -DSELF_TEST $(DEFINES) $(CFLAGS) $< -o $@

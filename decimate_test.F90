@@ -13,7 +13,7 @@ program decimate_test
   real, dimension(:,:)  , pointer :: src2
   real, dimension(:)  , pointer :: dst1d, dst1d2
   real, dimension(:,:), pointer :: dst2d
-  integer :: i, j, status, by
+  integer :: i, j, status, by, nbits
 
   write(6,'(A,I4,A,I4,A)')" ==== original Fortran data (",NI,",",NJ,')'
   write(6,*)'bi-linear function : f(i,j) = (i + 1) * (j+1)'
@@ -71,7 +71,18 @@ program decimate_test
     status = Decimate_2d(src1, by, dst2d, NI, NI, NJ)   ! explicit call to specific function
     call undecimate_array
     deallocate(dst2d)
- enddo
+  enddo
+
+  nbits = 16
+  write(6,'(A,I3,A)')" ==== quantization with",nbits,' bits ===='
+  call quantize_test(nbits)
+  nbits = 12
+  write(6,'(A,I3,A)')" ==== quantization with",nbits,' bits ===='
+  call quantize_test(nbits)
+  nbits = 8
+  write(6,'(A,I3,A)')" ==== quantization with",nbits,' bits ===='
+  call quantize_test(nbits)
+
  contains
 
   function ulp_diff_1(f1, f2, ni) result(ulp)  ! max distance in units of last place for 1 D arrays
@@ -176,4 +187,24 @@ program decimate_test
   end subroutine undecimate_array
   
 end program
+
+subroutine quantize_test(nbits)
+  use ISO_C_BINDING
+  use decimate_array
+  implicit none
+  real(kind=4), dimension(NI+2,NJ) :: z
+  integer, intent(IN) :: nbits
+  integer :: i, j
+
+  do j = 1, NJ
+  do i = 1, NI
+    z(i,j) = (i - NI*.5)*(i - NI*.5) + (j - NJ*.5)*(j - NJ*.5)
+    z(i,j) = sqrt(z(i,j))
+  enddo
+  enddo
+  call QuantizeRestore(z, NI, NI+2, NJ, nbits)
+  write(6,*)
+  call QuantizeRestore(z, NI, NI+2, NJ, nbits)
+end subroutine quantize_test
+
 

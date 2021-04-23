@@ -50,6 +50,15 @@ interface
     integer(C_INT), intent(IN), value           :: nj
     integer(C_INT)  :: status
   end function UnDecimate_2d
+  subroutine QuantizeRestore(z, ni, li, nj, nbits) bind(C,name='QuantizeRestore')
+    import :: C_FLOAT, C_INT
+    implicit none
+    real(C_FLOAT), dimension(*), intent(INOUT)  :: z     ! array to submit to quantize/restore
+    integer(C_INT), intent(IN), value           :: ni
+    integer(C_INT), intent(IN), value           :: li
+    integer(C_INT), intent(IN), value           :: nj
+    integer(C_INT), intent(IN), value           :: nbits ! number of bits to keep after quantization
+  end subroutine QuantizeRestore
 end interface
 
 #else
