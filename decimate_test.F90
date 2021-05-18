@@ -16,7 +16,7 @@ program decimate_test
   integer :: i, j, status, by, nbits
 
   write(6,'(A,I4,A,I4,A)')" ==== original Fortran data (",NI,",",NJ,')'
-  write(6,*)'bi-linear function : f(i,j) = (i + 1) * (j+1)'
+  write(6,*)'bi-linear function : f(i,j) = (i + 1.1) * (j + 1.1)'
   allocate( src0(NI,NJ,3) )
   allocate( src1(NI,NJ) )
   allocate( src2(NI,NJ) )
@@ -24,7 +24,7 @@ program decimate_test
 
   do j = 1, NJ
     do i = 1, NI
-      src1(i,j)   = (i + 1) * (j+1)
+      src1(i,j)   = (i + 1.1) * (j+1.1)
     enddo
 !     write(6,'(30F6.1)')src1(:,j)
   enddo
