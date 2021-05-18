@@ -274,6 +274,77 @@ int UnDecimate_byn_2d(float *src, int by, float *dst, int ni, int li, int nj){
   UnDecimate_byn_1d(fp, by, dst, ni) ;
   return 0 ;
 }
+//
+// compensation pass after inverse decimation by an arbitrary factor of a 1D array
+static inline int Compensate_byn_1d(float *src1, int by, float *dst, int ni, int li){
+  int i, j, k, l, pre, li0 ;
+  int ntup = (ni-2) / by ;                             // number of averaged groups of rows
+  float scale = 1.0f / by ;
+  int by2 = (li == 0) ? 1 : by ;                       // number of rows to average (1 if li == 0)
+  float scale1 = (li == 0) ? 1.0f : scale ;            // scaling for the "verbatim" case
+  float scale2 = (li == 0) ? scale : scale * scale ;   // scaling for the "multiple rows" case
+  float new, fix ;
+
+  pre = ni - (by * ntup) - 1 ;
+
+  for(i = 0 ; i < pre ; i++) {                                        // first pre point(s) verbatim
+    new = 0;
+    for(l = 0 , li0 = 0 ; l < by2 ; li0 += li, l++)                   // loop over "by" rows
+      new += src1[li0 + i] ;
+    new *= scale1 ;
+    fix  = dst[i] - new ;                                             // expected result - actual result
+    for(l = 0 , li0 = 0 ; l < by2 ; li0 += li, l++)                   // loop over "by" rows
+      src1[li0 + i] += fix ;                                          // apply compensation
+  }
+
+  for(i = pre, j = pre ; i < pre + ntup ; i++ , j+=by) {              // loop over ntup groups (by x by)
+    new = 0 ;
+    for(l = 0 , li0 = 0 ; l < by2 ; li0 += li, l++)                   // loop across "by" rows
+      for(k = 0 ; k < by ; k++)                                       // loop in row across "by" points
+        new += src1[j + k + li0] ;
+    new *= scale2 ;
+    fix  = dst[i] - new ;                                             // expected result - actual result
+    for(l = 0 , li0 = 0 ; l < by2 ; li0 += li, l++)                   // loop across "by" rows
+      for(k = 0 ; k < by ; k++)                                       // loop in row across "by" points
+        src1[j + k + li0] += fix ;                                    // apply compensation
+  }
+
+  new = 0 ;
+  for(l = 0 , li0 = 0 ; l < by2 ; li0 += li, l++)                     // last point verbatim
+    new += src1[li0 + j] ;
+  new *= scale1 ;
+  fix  = dst[i] - new ;                                               // expected result - actual result
+  for(l = 0 , li0 = 0 ; l < by2 ; li0 += li, l++)                     // last point verbatim
+    src1[li0 + j] += fix ;                                            // apply compensation
+  
+  return i + 1 ;
+}
+
+// compensation pass after inverse decimation by an arbitrary factor of a 2D array
+int Compensate_byn_2d(float *src, int by, float *dst, int ni, int li, int nj){
+  int itup = (ni-2)/by ;                      // number of averaged pairs along i
+  int jtup = (nj-2)/by ;                      // number of averaged pairs along j
+  int ipre = ni - (by * itup) - 1 ;
+  int jpre = nj - (by * jtup) - 1 ;
+  int nid = ipre + 1 + itup ;                 // total number of decimated points along i
+  int j;
+
+//   if(itup <= 1 || jtup <= 1) return -1 ;      // one or both dimensions too small
+
+  for(j = 0 ; j < jpre ; j ++){
+    Compensate_byn_1d(src, by, dst, ni, 0) ;    // first jpre row(s) (only decimated along i)
+    src += li ;
+    dst += nid ;
+  }
+  for(j=1 ; j <= jtup ; j++) {                // jtup  blocks of "by" rows
+    Compensate_byn_1d(src, by, dst, ni, li) ;
+    src += (li*by) ;
+    dst += nid ;
+  }
+  Compensate_byn_1d(src, by, dst, ni, 0) ;      // last row (only decimated along i)
+  return 0 ;
+}
+
 // ============================= decimation by 2 =============================
 //
 //  +---+     +---+---+---+---+     +---+---+---+
@@ -955,6 +1026,12 @@ int Decimate_1d(float *src, int by, float *dst, int ni, int li){
   }
 }
 
+// 1D general compensation function
+int Compensate_1d(float *src, int by, float *dst, int ni, int li){
+  if(by < 2) return 0 ;    // nothing to do
+  return Compensate_byn_1d(src, by, dst, ni, li) ;
+}
+
 // 2D general decimation function
 int Decimate_2d(float *src, int by, float *dst, int ni, int li, int nj){
 //   if(by < 2) return -1 ;
@@ -977,6 +1054,12 @@ int Decimate_2d(float *src, int by, float *dst, int ni, int li, int nj){
     default:
       return Decimate_byn_2d(src, by, dst, ni, li, nj) ;
   }
+}
+
+// 2D general compensation function
+int Compensate_2d(float *src, int by, float *dst, int ni, int li, int nj){
+  if(by < 2) return 0 ;    // nothing to do
+  return Compensate_byn_2d(src, by, dst, ni, li, nj) ;
 }
 
 // 1D general inverse decimation (restore) function

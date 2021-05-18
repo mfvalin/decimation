@@ -24,7 +24,9 @@ program decimate_test
 
   do j = 1, NJ
     do i = 1, NI
-      src1(i,j)   = (i + 1.1) * (j+1.1)
+!       src1(i,j)   = (i + 1.1) * (j+1.1)
+      src1(i,j)   = (NI+NJ)*.5 + sqrt((i - NI*.5)**2 + (j-NJ*.5)**2)
+      src1(i,j)   = 10.2 + sqrt((i - NI*.5)**2 + (j-NJ*.5)**2)
     enddo
 !     write(6,'(30F6.1)')src1(:,j)
   enddo
@@ -116,8 +118,8 @@ program decimate_test
         write(6,1) 'ERROR: max difference =',abs(maxval(src2(1,:)-src1(1,:))), &
                   ', max rel error  =',maxval(abs(src2(1,:)-src1(1,:))/src1(1,:)), &
                   ', maxulp =',ulp_diff_1(src2(1,:),src1(1,:),NJ)
-  !       write(6,'(30F6.1)')src2(1,:)
-  !       write(6,'(30F6.1)')abs(src2(1,:) - src1(1,:))
+!         write(6,'(30F6.1)')src2(1,:)
+!         write(6,'(30F6.1)')abs(src2(1,:) - src1(1,:))
       else
         write(6,1) 'SUCCESS: max difference =',abs(maxval(src2(1,:)-src1(1,:))), &
                   ', max rel error  =',maxval(abs(src2(1,:)-src1(1,:))/src1(1,:)), &
@@ -131,8 +133,8 @@ program decimate_test
       write(6,1) 'ERROR: max difference =',abs(maxval(src2(:,1)-src1(:,1))), &
                  ', max rel error  =',maxval(abs(src2(:,1)-src1(:,1))/src1(:,1)), &
                  ', maxulp =',ulp_diff_1(src2(:,1),src1(:,1),NI)
-      write(6,'(30F6.1)')src2(:,1)
-      write(6,'(30F6.1)')abs(src2(:,1) - src1(:,1))
+!       write(6,'(30F6.1)')src2(:,1)
+!       write(6,'(30F6.1)')abs(src2(:,1) - src1(:,1))
     else
       write(6,1) 'SUCCESS: max difference =',abs(maxval(src2(:,1)-src1(:,1))), &
                  ', max rel error  =',maxval(abs(src2(:,1)-src1(:,1))/src1(:,1)), &
@@ -147,10 +149,10 @@ program decimate_test
                   ', max rel error  =',(maxval(abs(src2-src1)/src1)), &
                   ', maxulp =',ulp_diff_2(src2,src1,NI,NI,NJ)
       do j = 1, NJ
-        write(6,'(30F6.1)')src2(:,j)
+!         write(6,'(30F6.1)')src2(:,j)
 !         write(6,'(30F6.1)')abs(src2(:,j) - src1(:,j))
       enddo
-      write(6,*)
+!       write(6,*)
     else
       write(6,1) 'SUCCESS: max difference =',abs(maxval(src2-src1)), &
                  ', max rel error  =',maxval(abs(src2-src1)/src1), &
@@ -162,27 +164,33 @@ program decimate_test
   subroutine undecimate_row
     src2 = 0.0
     status = UnDecimate(   dst1d, by, src2(:,1), NI) ! generic call
+    status = Compensate(src2(:,1), by, NI, dst1d)
     call verify_row
     src2 = 0.0
     status = UnDecimate_1d(dst1d, by, src2(:,1), NI) ! explicit call to specific function
+    status = Compensate_1d(src2(:,1), by, dst1d, NI, 0)
     call verify_row
   end subroutine undecimate_row
 
   subroutine undecimate_column
     src2 = 0.0
     status = UnDecimate(   dst1d2, by, src2(1,:), NJ)    ! generic call
+    status = Compensate(src2(1,:), by, NJ, dst1d2)
     call verify_col
     src2 = 0.0
     status = UnDecimate_1d(dst1d2, by, src2(1,:), NJ)    ! explicit call to specific function
+    status = Compensate_1d(src2(1,:), by, dst1d2, NJ, 0)
     call verify_col
   end subroutine undecimate_column
 
   subroutine undecimate_array
     src2 = 0.0
     status = UnDecimate(   dst2d, by, src2, NI, NI, NJ)   ! generic call
+    status = Compensate(src2, by, NI, NI, NJ, dst2d)
     call verify_all
     src2 = 0.0
     status = UnDecimate_2d(dst2d, by, src2, NI, NI, NJ)   ! explicit call to specific function
+    status = Compensate_2d(src2, by, dst2d, NI, NI, NJ)
     call verify_all
   end subroutine undecimate_array
   
